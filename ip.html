@@ -111,9 +111,9 @@
    </div>
 
     <script>
-        const ipinfoToken = Deno.env.get("IPINFO_TOKEN");
-        const ip2locationKey = Deno.env.get("IP2LOCATION_KEY");
-        const ipApiIsKey = Deno.env.get("IPAPIIS_KEY");
+        const ipinfoToken = process.env.IPINFO_TOKEN;
+        const ip2locationKey = process.env.IP2LOCATION_KEY;
+        const ipApiIsKey = process.env.IPAPIIS_KEY;
 
       const ipInfoContainer = document.getElementById('ip-info-container');
        const loadingIndicator = document.getElementById('loading');

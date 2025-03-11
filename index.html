@@ -131,8 +131,8 @@
     </div>
 
     <script>
-      const hotSearchKey = Deno.env.get("JUHE_HOT_SEARCH_KEY");
-      const newsKey = Deno.env.get("JUHE_NEWS_KEY");
+      const hotSearchKey = process.env.JUHE_HOT_SEARCH_KEY;
+      const newsKey = process.env.JUHE_NEWS_KEY;
       const hotSearchContainer = document.getElementById("hot-search-container");
       const newsContainer = document.getElementById("news-container");
       const errorContainer = document.getElementById("error-container");

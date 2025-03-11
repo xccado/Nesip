@@ -5,7 +5,7 @@
       "src": "index.html",
       "use": "@vercel/static"
     },
-     {
+    {
       "src": "ip.html",
       "use": "@vercel/static"
     }
@@ -19,13 +19,21 @@
       "src": "/ip",
       "dest": "ip.html"
     }
-  ]
-,
- "env": {
-    "JUHE_HOT_SEARCH_KEY": "@juhe_hot_search_key",
-    "JUHE_NEWS_KEY": "@juhe_news_key",
-    "IPINFO_TOKEN": "@ipinfo_token",
-    "IP2LOCATION_KEY":"@ip2location_key",
-    "IPAPIIS_KEY":"@ipapiis_key"
+  ],
+  "env": {
+    "JUHE_HOT_SEARCH_KEY": "$juhe_hot_search_key",
+    "JUHE_NEWS_KEY": "$juhe_news_key",
+    "IPINFO_TOKEN": "$ipinfo_token",
+    "IP2LOCATION_KEY": "$ip2location_key",
+    "IPAPIIS_KEY": "$ipapiis_key"
+  },
+  "build": {
+    "env": {
+      "JUHE_HOT_SEARCH_KEY": "$juhe_hot_search_key",
+      "JUHE_NEWS_KEY": "$juhe_news_key",
+      "IPINFO_TOKEN": "$ipinfo_token",
+      "IP2LOCATION_KEY": "$ip2location_key",
+      "IPAPIIS_KEY": "$ipapiis_key"
+    }
   }
 }
