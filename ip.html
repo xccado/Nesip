@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP 信息查询</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+             animation: changeBackground 60s infinite alternate;
+
+        }
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 1rem;
+
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+            font-weight: 600;
+        }
+        .card-container{
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap:1rem;
+          margin-bottom: 2rem;
+        }
+        .card {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            transition: transform 0.3s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #444;
+        }
+        .info-item {
+            margin-bottom: 0.5rem;
+            display:flex;
+            flex-direction:column;
+
+        }
+        .info-label {
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 0.25rem;
+             min-width: 100px; /* Adjust as needed */
+
+        }
+        .info-value {
+            color: #333;
+           word-break: break-all;
+
+        }
+        .loading {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 1.25rem;
+            color: #555;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+            margin-top: 1rem;
+        }
+        .footer{
+          text-align: center;
+          font-size: 1rem;
+          margin-top: 1rem;
+        }
+        .footer a{
+          color: #333;
+        }
+
+        @keyframes changeBackground {
+          0% {
+                background-image: url('https://suijiapi.deno.dev/api/random?timestamp=${Date.now()}');
+            }
+            100% {
+                background-image: url('https://suijiapi.deno.dev/api/random?timestamp=${Date.now() + 1}');
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>IP 信息查询</h1>
+         <div id="error-container" class="error-message"></div>
+         <div class="loading" id="loading">加载中...</div>
+        <div class="card-container" id="ip-info-container"></div>
+
+    </div>
+
+    <div class="footer">
+      <p>数据来源:  <a href="https://ipinfo.io/" target="_blank">IPinfo</a>, <a href="https://ipapi.is/" target="_blank">ipapi.is</a>, <a href="https://www.ip2location.io/" target="_blank">IP2Location</a> | Go <a href="/">Back to home</a></p>
+   </div>
+
+    <script>
+        const ipinfoToken = Deno.env.get("IPINFO_TOKEN");
+        const ip2locationKey = Deno.env.get("IP2LOCATION_KEY");
+        const ipApiIsKey = Deno.env.get("IPAPIIS_KEY");
+
+      const ipInfoContainer = document.getElementById('ip-info-container');
+       const loadingIndicator = document.getElementById('loading');
+      const errorContainer = document.getElementById("error-container");
+
+        async function getIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (error) {
+                console.error("Error fetching IP:", error);
+                displayError("获取公共IP失败，网络错误");
+                return null;
+            }
+        }
+
+      async function fetchIpInfo(ip) {
+        try {
+              if (!ipinfoToken || !ip2locationKey || !ipApiIsKey) {
+                  displayError("API密钥未配置");
+                  return;
+                }
+
+          const ipinfoPromise = fetch(`https://ipinfo.io/${ip}?token=${ipinfoToken}`).then(response => response.json());
+          const ip2locationPromise = fetch(`https://api.ip2location.io/?key=${ip2locationKey}&ip=${ip}`).then(response => response.json());
+          const ipapiIsPromise = fetch('https://api.ipapi.is', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ips: [ip], key: ipApiIsKey })
+          }).then(response => response.json());
+
+          const [ipinfoData, ip2locationData, ipapiisData] = await Promise.all([ipinfoPromise, ip2locationPromise, ipapiIsPromise]);
+
+            displayIpInfo(ipinfoData, ip2locationData, Array.isArray(ipapiisData) ? ipapiisData[0] : ipapiisData);
+
+        } catch(error){
+          console.error("Error fetching IP details:", error);
+           displayError("IP信息查询失败，网络错误");
+        }finally{
+          loadingIndicator.style.display = 'none';
+        }
+
+      }
+
+      function displayIpInfo(ipinfoData, ip2locationData, ipapiisData) {
+        //ipinfo card
+        const ipinfoCard = createInfoCard('IPinfo', [
+          { label: 'IP', value: ipinfoData.ip },
+          { label: 'City', value: ipinfoData.city },
+          { label: 'Region', value: ipinfoData.region },
+          { label: 'Country', value: ipinfoData.country },
+          { label: 'Location', value: ipinfoData.loc },
+          { label: 'Organization', value: ipinfoData.org },
+          { label: 'Postal', value: ipinfoData.postal },
+          { label: 'Timezone', value: ipinfoData.timezone },
+        ]);
+        //ip2location card
+        const ip2locationCard = createInfoCard('IP2Location', [
+                { label: 'IP', value: ip2locationData.ip },
+                { label: 'Country Code', value: ip2locationData.country_code },
+                { label: 'Country Name', value: ip2locationData.country_name },
+                { label: 'Region Name', value: ip2locationData.region_name },
+                { label: 'City Name', value: ip2locationData.city_name },
+                { label: 'Latitude', value: ip2locationData.latitude },
+                { label: 'Longitude', value: ip2locationData.longitude },
+                { label: 'ZIP Code', value: ip2locationData.zip_code },
+                { label: 'Time Zone', value: ip2locationData.time_zone },
+                { label: 'ASN', value: ip2locationData.asn },
+                { label: 'AS', value: ip2locationData.as },
+                { label: 'Is Proxy', value: ip2locationData.is_proxy },
+            ]);
+
+        //ipapi.is card
+        const ipapiisCard = createInfoCard('ipapi.is', [
+            { label: 'IP', value: ipapiisData.ip },
+            { label: 'RIR', value: ipapiisData.rir },
+              { label: 'Is Bogon', value: ipapiisData.is_bogon },
+              { label: 'Is Mobile', value: ipapiisData.is_mobile },
+              { label: 'Is Satellite', value: ipapiisData.is_satellite },
+              { label: 'Is Crawler', value: ipapiisData.is_crawler },
+              {label: 'Is Datacenter', value: ipapiisData.is_datacenter},
+              { label: 'Is Tor', value: ipapiisData.is_tor },
+              { label: 'Is Proxy', value: ipapiisData.is_proxy },
+              { label: 'Is VPN', value: ipapiisData.is_vpn },
+               { label: 'Is Abuser', value: ipapiisData.is_abuser },
+              {label: 'Company Name', value: ipapiisData.company?.name},
+              {label: 'Company Domain', value: ipapiisData.company?.domain},
+              { label: 'ASN', value: ipapiisData.asn?.asn },
+              { label: 'Continent', value: ipapiisData.location?.continent },
+            { label: 'Country', value: ipapiisData.location?.country },
+            { label: 'Country Code', value: ipapiisData.location?.country_code },
+            { label: 'State', value: ipapiisData.location?.state },
+            { label: 'City', value: ipapiisData.location?.city },
+        ]);
+
+        ipInfoContainer.appendChild(ipinfoCard);
+        ipInfoContainer.appendChild(ip2locationCard);
+        ipInfoContainer.appendChild(ipapiisCard);
+
+      }
+
+     function createInfoCard(title, data) {
+        const card = document.createElement('div');
+        card.classList.add('card');
+
+        const cardTitle = document.createElement('h2');
+        cardTitle.textContent = title;
+        card.appendChild(cardTitle);
+
+        data.forEach(item => {
+          if(item.value){
+            const infoItem = document.createElement('div');
+            infoItem.classList.add('info-item');
+
+            const infoLabel = document.createElement('span');
+            infoLabel.classList.add('info-label');
+            infoLabel.textContent = `${item.label}:`;
+            infoItem.appendChild(infoLabel);
+
+            const infoValue = document.createElement('span');
+            infoValue.classList.add('info-value');
+            infoValue.textContent = item.value;
+            infoItem.appendChild(infoValue);
+             card.appendChild(infoItem);
+          }
+
+        });
+
+        return card;
+      }
+
+       function displayError(message){
+           errorContainer.textContent = message;
+           loadingIndicator.style.display = 'none';
+        }
+
+      async function init() {
+            const publicIp = await getIP();
+            if (publicIp) {
+                await fetchIpInfo(publicIp);
+            }
+        }
+
+      init();
+
+    </script>
+</body>
+</html>

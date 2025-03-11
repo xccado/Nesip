@@ -1,31 +1,270 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>全网热搜 & 新闻头条</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            animation: changeBackground 60s infinite alternate;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .card {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        h1,
+        h2 {
+            color: #333;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+        }
+        h1 {
+          font-size: 2rem;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+        }
+
+        .item {
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 1rem;
+        }
+
+        .item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .title {
+            font-weight: 500;
+            color: #444;
+            margin-bottom:0.4rem;
+
+        }
+
+        .title a {
+            color: inherit; /* Inherit color from parent */
+            text-decoration: none; /* Remove underline */
+            transition: color 0.3s ease;
+        }
+
+        .title a:hover {
+            color: #0056b3; /* Change color on hover */
+        }
+
+        .info {
+            font-size: 0.875rem;
+            color: #777;
+        }
+        .info span{
+          margin-right: 0.5rem;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding: 1rem;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+        }
+         .footer a {
+            color: #fff;
+         }
+
+        @keyframes changeBackground {
+            0% {
+                background-image: url('https://suijiapi.deno.dev/api/random?timestamp=${Date.now()}');
+            }
+            100% {
+                background-image: url('https://suijiapi.deno.dev/api/random?timestamp=${Date.now() + 1}');
+            }
+        }
+         .error-message {
+            color: red;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+    </style>
 </head>
+
 <body>
-    <header>
+    <div class="container">
         <h1>全网热搜 & 新闻头条</h1>
-        <nav>
-            <a href="ipinfo.html">IP 信息查询</a>
-        </nav>
-    </header>
-    <main>
-        <section id="hot-searches">
-            <h2>全网热搜榜</h2>
-            <ul id="hot-searches-list"></ul>
-        </section>
-        <section id="news-headlines">
+
+        <div id="error-container" class="error-message"></div>
+        <div id="hot-search-container">
+          <h2>全网热搜榜</h2>
+        </div>
+        <div id="news-container">
             <h2>新闻头条</h2>
-            <ul id="news-headlines-list"></ul>
-        </section>
-    </main>
-    <footer>
-        <p>数据每日更新，每日调用次数限制：5 次</p>
-    </footer>
-    <script src="script.js"></script>
+        </div>
+
+         <div class="footer">
+        <p>数据来源: <a href="https://www.juhe.cn/" target="_blank">聚合数据</a> | <a href="ip.html">IP查询</a></p>
+    </div>
+    </div>
+
+    <script>
+      const hotSearchKey = Deno.env.get("JUHE_HOT_SEARCH_KEY");
+      const newsKey = Deno.env.get("JUHE_NEWS_KEY");
+      const hotSearchContainer = document.getElementById("hot-search-container");
+      const newsContainer = document.getElementById("news-container");
+      const errorContainer = document.getElementById("error-container");
+
+       async function fetchHotSearch() {
+            const apiUrl = `http://apis.juhe.cn/fapigx/networkhot/query?key=${hotSearchKey}`;
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if(data.error_code === 0 && data.result && data.result.list) {
+                  displayHotSearch(data.result.list);
+
+                }else{
+                   displayError(`获取热搜数据失败：${data.reason || '未知错误'}`);
+                }
+
+            } catch (error) {
+                console.error("Error fetching hot search data:", error);
+                displayError("获取热搜数据失败：网络错误");
+
+            }
+        }
+
+        async function fetchNews() {
+            const apiUrl = `http://v.juhe.cn/toutiao/index?type=top&key=${newsKey}&page_size=30`;
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                if (data.error_code === 0 && data.result && data.result.data) {
+                   displayNews(data.result.data);
+                } else {
+                    displayError(`获取新闻失败：${data.reason || "未知错误"}`);
+                  }
+
+            } catch (error) {
+              console.error("Error fetching news data:", error);
+              displayError("获取新闻失败，网络错误");
+
+            }
+        }
+
+      function displayHotSearch(hotSearchList){
+
+          const hotSearchHTML = hotSearchList.slice(0, 30).map(item => `
+              <div class="card">
+                  <h3 class="title">${item.title}</h3>
+                  <p class="info">热度: ${item.hotnum}  ${item.digest ? `<br>简介: ${item.digest}`: ""}</p>
+              </div>
+          `).join('');
+          hotSearchContainer.insertAdjacentHTML('beforeend', hotSearchHTML);
+      }
+
+       function displayNews(newsList) {
+
+          const newsHTML = newsList.map(item => `
+             <div class="card">
+                <h3 class="title"><a href="${item.url}" target="_blank">${item.title}</a></h3>
+                <p class="info">
+                  <span>${item.author_name}</span>
+                  <span>${item.date}</span>
+                 </p>
+              </div>
+          `).join('');
+          newsContainer.insertAdjacentHTML('beforeend', newsHTML);
+        }
+
+        function displayError(message){
+           errorContainer.textContent = message;
+        }
+
+      function scheduleFetches() {
+
+           if (!hotSearchKey || !newsKey) {
+              displayError("API密钥未配置");
+               return;
+           }
+           //为了避免置0，将时间延迟
+            const now = new Date();
+            const delayMinutes =  Math.floor(Math.random() * 5) + 1; // Generate a random delay
+            const delayedNow = new Date(now.getTime() + delayMinutes * 60000);
+
+            //
+            const times = [
+                delayedNow.setHours(Math.floor(Math.random() * 4) + 1, Math.floor(Math.random() * 60), 0, 0),    //  1- 4点
+                delayedNow.setHours(Math.floor(Math.random() * 4) + 6, Math.floor(Math.random() * 60), 0, 0), //  6- 9点
+                delayedNow.setHours(Math.floor(Math.random() * 4) + 11, Math.floor(Math.random() * 60), 0, 0), // 11-14点
+                delayedNow.setHours(Math.floor(Math.random() * 5) + 16, Math.floor(Math.random() * 60), 0, 0),  // 16-20点
+                delayedNow.setHours(Math.floor(Math.random() * 3) + 21, Math.floor(Math.random() * 60), 0, 0) // 21-23点
+            ];
+
+            times.forEach(time => {
+                const delay = time - Date.now();
+                if(delay > 0) {
+                  setTimeout(() => {
+                      fetchHotSearch();
+                      fetchNews();
+                  }, delay);
+              }
+            });
+
+            setInterval(() => {
+              //为了避免置0，将时间延迟
+              const now = new Date();
+              const delayMinutes =  Math.floor(Math.random() * 5) + 1; // Generate a random delay
+              const delayedNow = new Date(now.getTime() + delayMinutes * 60000);
+
+                const times = [
+                   delayedNow.setHours(Math.floor(Math.random() * 4) + 1, Math.floor(Math.random() * 60), 0, 0),    //  1- 4点
+                    delayedNow.setHours(Math.floor(Math.random() * 4) + 6, Math.floor(Math.random() * 60), 0, 0), //  6- 9点
+                    delayedNow.setHours(Math.floor(Math.random() * 4) + 11, Math.floor(Math.random() * 60), 0, 0), // 11-14点
+                    delayedNow.setHours(Math.floor(Math.random() * 5) + 16, Math.floor(Math.random() * 60), 0, 0),  // 16-20点
+                    delayedNow.setHours(Math.floor(Math.random() * 3) + 21, Math.floor(Math.random() * 60), 0, 0) // 21-23点
+                ];
+
+                times.forEach(time => {
+                    const delay = time - Date.now();
+
+                    if (delay > 0) {
+                        setTimeout(() => {
+                             fetchHotSearch();
+                             fetchNews();
+                        }, delay);
+                     }
+                });
+
+            }, 24 * 60 * 60 * 1000); // 每天循环
+        }
+
+       scheduleFetches()
+
+    </script>
 </body>
+
 </html>
